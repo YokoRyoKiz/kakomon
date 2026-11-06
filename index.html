@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>大学院入試 過去問アーカイブ - 分野別ビューア</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-tertiary: #334155;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --kyoto-tag: #ef4444;
+      --nagoya-tag: #3b82f6;
+      --sidebar-width: 360px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      display: flex;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* Overlay for mobile drawer */
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(2px);
+      z-index: 40;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    #sidebar-overlay.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* Sidebar */
+    #sidebar {
+      width: var(--sidebar-width);
+      min-width: 280px;
+      max-width: 420px;
+      background-color: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      z-index: 50;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .header-panel {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: rgba(15, 23, 42, 0.6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .app-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+
+    .app-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .close-drawer-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    /* Field tabs */
+    .field-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      background-color: rgba(15, 23, 42, 0.3);
+      max-height: 195px;
+      overflow-y: auto;
+    }
+
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: left;
+    }
+
+    .tab-btn:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background-color: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.4);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .tab-badge {
+      font-size: 0.7rem;
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 10px;
+      color: var(--text-main);
+    }
+
+    .tab-btn.active .tab-badge {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    /* Control & Filter toolbar */
+    .filter-panel {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-primary);
+      color: var(--text-main);
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+    }
+
+    .filter-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .univ-filter {
+      display: flex;
+      gap: 3px;
+      background: var(--bg-primary);
+      padding: 2px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .filter-btn {
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      cursor: pointer;
+    }
+
+    .filter-btn.active {
+      background: var(--bg-tertiary);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .summary-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 9px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      color: var(--accent);
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .summary-btn:hover {
+      background: var(--accent);
+      color: #0f172a;
+    }
+
+    /* Question list */
+    .question-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .question-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid transparent;
+      cursor: pointer;
+      min-height: 42px;
+      transition: all 0.1s ease;
+    }
+
+    .question-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .question-item.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .q-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .q-univ-tag {
+      font-size: 0.68rem;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .q-univ-tag.kyoto {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .q-univ-tag.nagoya {
+      background: rgba(59, 130, 246, 0.18);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+
+    .q-title {
+      font-size: 0.82rem;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Main View Area */
+    #main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #090d16;
+      position: relative;
+      min-width: 0;
+    }
+
+    .top-toolbar {
+      height: 50px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .menu-toggle-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 1.15rem;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .current-q-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .current-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-buttons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .tool-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-tertiary);
+      color: var(--text-main);
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .tool-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: var(--accent);
+    }
+
+    .tool-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      border-color: var(--border-color);
+    }
+
+    .select-dropdown {
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-primary);
+      color: var(--text-main);
+      font-size: 0.78rem;
+      outline: none;
+    }
+
+    /* PDF Viewer Container */
+    .viewer-container {
+      flex: 1;
+      position: relative;
+      background: #1e1e1e;
+      overflow: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #pdf-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* Mobile Bottom Navigation Bar */
+    .mobile-bottom-bar {
+      display: none;
+      height: 52px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      padding: 0 12px;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+      align-items: center;
+      justify-content: space-around;
+      gap: 8px;
+      z-index: 20;
+    }
+
+    .mobile-nav-btn {
+      flex: 1;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .mobile-nav-btn:active {
+      background: var(--accent);
+      color: #0f172a;
+    }
+
+    .mobile-nav-btn:disabled {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    /* RESPONSIVE DESIGN (Smartphone & Tablet) */
+    @media (max-width: 768px) {
+      :root {
+        --sidebar-width: 82%;
+      }
+
+      #sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        transform: translateX(-100%);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+        max-width: 320px;
+        padding-top: env(safe-area-inset-top, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+      }
+
+      #sidebar.open {
+        transform: translateX(0);
+      }
+
+      .close-drawer-btn {
+        display: block;
+      }
+
+      .menu-toggle-btn {
+        display: flex;
+      }
+
+      .top-toolbar {
+        padding: 0 10px;
+      }
+
+      .desktop-only {
+        display: none !important;
+      }
+
+      .mobile-bottom-bar {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Overlay for closing drawer on tap -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- Sidebar (Drawer on mobile) -->
+  <aside id="sidebar">
+    <div class="header-panel">
+      <div>
+        <div class="app-title">
+          <span>📚 過去問アーカイブ</span>
+        </div>
+        <div class="app-subtitle">京大(07〜26) / 名大(22〜26) 全174問</div>
+      </div>
+      <button id="close-drawer-btn" class="close-drawer-btn" aria-label="閉じる">✕</button>
+    </div>
+
+    <!-- Field selection tabs -->
+    <div class="field-tabs" id="field-tabs"></div>
+
+    <!-- Filter & search panel -->
+    <div class="filter-panel">
+      <input type="text" id="search-input" class="search-input" placeholder="🔍 検索 (例: 2024, 問1, 1日目)">
+      
+      <div class="filter-row">
+        <div class="univ-filter">
+          <button class="filter-btn active" data-univ="all">すべて</button>
+          <button class="filter-btn" data-univ="京都大学">京大</button>
+          <button class="filter-btn" data-univ="名古屋大学">名大</button>
+        </div>
+        <button id="field-summary-btn" class="summary-btn">
+          📑 分野まとめ
+        </button>
+      </div>
+    </div>
+
+    <!-- Question list -->
+    <div class="question-list" id="question-list"></div>
+  </aside>
+
+  <!-- Main View -->
+  <main id="main-content">
+    <div class="top-toolbar">
+      <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; min-width: 0;">
+        <button id="menu-toggle-btn" class="menu-toggle-btn" aria-label="メニューを開く">☰</button>
+        <div class="current-q-info">
+          <span id="current-title" class="current-title">PDFを選択してください</span>
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button id="prev-btn" class="tool-btn desktop-only">◀ 前へ</button>
+        <button id="next-btn" class="tool-btn desktop-only">次へ ▶</button>
+        <a id="open-new-tab-btn" class="tool-btn" href="#" target="_blank" rel="noopener">別タブ ↗</a>
+        
+        <select id="quick-pdf-select" class="select-dropdown desktop-only">
+          <option value="">📁 大学まとめ...</option>
+          <option value="./pdf/summary_all.pdf">全体まとめ (102p)</option>
+          <option value="./pdf/summary_kyoto.pdf">京大まとめ (26p)</option>
+          <option value="./pdf/summary_nagoya.pdf">名大まとめ (76p)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="viewer-container">
+      <iframe id="pdf-frame" src=""></iframe>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar (Phone thumb-friendly) -->
+    <div class="mobile-bottom-bar">
+      <button id="mobile-menu-btn" class="mobile-nav-btn">☰ 目次</button>
+      <button id="mobile-prev-btn" class="mobile-nav-btn">◀ 前へ</button>
+      <button id="mobile-next-btn" class="mobile-nav-btn">次へ ▶</button>
+    </div>
+  </main>
+
+  <script>
+    const fieldData = {"01_線形代数": {"id": "01_線形代数", "name": "線形代数", "summary": "./pdf/01_linear_algebra/summary.pdf", "questions": [{"title": "京大_2007年度_問1", "path": "./pdf/01_linear_algebra/kyoto_2007_q1.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2007年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2007_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2008年度_問1", "path": "./pdf/01_linear_algebra/kyoto_2008_q1.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2008年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2008_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2009年度_問1", "path": "./pdf/01_linear_algebra/kyoto_2009_q1.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2009年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2009_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2010年度_問1", "path": "./pdf/01_linear_algebra/kyoto_2010_q1.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2010年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2010_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2012年度_問1", "path": "./pdf/01_linear_algebra/kyoto_2012_q1.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2012年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2012_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2013年度_問1", "path": "./pdf/01_linear_algebra/kyoto_2013_q1.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2013年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2013_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2014年度_問3", "path": "./pdf/01_linear_algebra/kyoto_2014_q3.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2014年度_問4", "path": "./pdf/01_linear_algebra/kyoto_2014_q4.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2015年度_問3", "path": "./pdf/01_linear_algebra/kyoto_2015_q3.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2015年度_問4", "path": "./pdf/01_linear_algebra/kyoto_2015_q4.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2016年度_問1", "path": "./pdf/01_linear_algebra/kyoto_2016_q1.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2016年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2016_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2017年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2017_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2017年度_問3", "path": "./pdf/01_linear_algebra/kyoto_2017_q3.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2017年度_問7", "path": "./pdf/01_linear_algebra/kyoto_2017_q7.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2018年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2018_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2018年度_問6", "path": "./pdf/01_linear_algebra/kyoto_2018_q6.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2018年度_問7", "path": "./pdf/01_linear_algebra/kyoto_2018_q7.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2019年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2019_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2019年度_問5", "path": "./pdf/01_linear_algebra/kyoto_2019_q5.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2019年度_問7", "path": "./pdf/01_linear_algebra/kyoto_2019_q7.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2020年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2020_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2020年度_問3", "path": "./pdf/01_linear_algebra/kyoto_2020_q3.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2022年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2022_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2023年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2023_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2023年度_問3", "path": "./pdf/01_linear_algebra/kyoto_2023_q3.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2024年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2024_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2024年度_問3", "path": "./pdf/01_linear_algebra/kyoto_2024_q3.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2024年度_問7", "path": "./pdf/01_linear_algebra/kyoto_2024_q7.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2025年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2025_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2025年度_問3", "path": "./pdf/01_linear_algebra/kyoto_2025_q3.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2026年度_問2", "path": "./pdf/01_linear_algebra/kyoto_2026_q2.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "京大_2026年度_問3", "path": "./pdf/01_linear_algebra/kyoto_2026_q3.pdf", "univ": "京都大学", "field": "線形代数"}, {"title": "名大_2022年度_第1期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2022_t1_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2022年度_第1期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2022_t1_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2022年度_第1期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2022_t1_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2022年度_第2期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2022_t2_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2022年度_第2期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2022_t2_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2022年度_第2期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2022_t2_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2023年度_第1期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2023_t1_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2023年度_第1期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2023_t1_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2023年度_第1期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2023_t1_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2023年度_第2期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2023_t2_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2023年度_第2期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2023_t2_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2023年度_第2期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2023_t2_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2024年度_第1期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2024_t1_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2024年度_第1期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2024_t1_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2024年度_第1期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2024_t1_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2024年度_第2期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2024_t2_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2024年度_第2期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2024_t2_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2024年度_第2期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2024_t2_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2025年度_第1期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2025_t1_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2025年度_第1期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2025_t1_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2025年度_第1期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2025_t1_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2025年度_第2期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2025_t2_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2026年度_第1期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2026_t1_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2026年度_第1期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2026_t1_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2026年度_第1期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2026_t1_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2026年度_第2期_1日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2026_t2_d1_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2026年度_第2期_1日目_問2", "path": "./pdf/01_linear_algebra/nagoya_2026_t2_d1_q2.pdf", "univ": "名古屋大学", "field": "線形代数"}, {"title": "名大_2026年度_第2期_2日目_問1", "path": "./pdf/01_linear_algebra/nagoya_2026_t2_d2_q1.pdf", "univ": "名古屋大学", "field": "線形代数"}]}, "02_微分積分・解析": {"id": "02_微分積分・解析", "name": "微分積分・解析", "summary": "./pdf/02_calculus/summary.pdf", "questions": [{"title": "京大_2007年度_問3", "path": "./pdf/02_calculus/kyoto_2007_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2007年度_問4", "path": "./pdf/02_calculus/kyoto_2007_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2008年度_問3", "path": "./pdf/02_calculus/kyoto_2008_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2008年度_問4", "path": "./pdf/02_calculus/kyoto_2008_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2009年度_問3", "path": "./pdf/02_calculus/kyoto_2009_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2009年度_問4", "path": "./pdf/02_calculus/kyoto_2009_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2010年度_問3", "path": "./pdf/02_calculus/kyoto_2010_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2010年度_問4", "path": "./pdf/02_calculus/kyoto_2010_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2012年度_問3", "path": "./pdf/02_calculus/kyoto_2012_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2012年度_問4", "path": "./pdf/02_calculus/kyoto_2012_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2013年度_問3", "path": "./pdf/02_calculus/kyoto_2013_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2013年度_問4", "path": "./pdf/02_calculus/kyoto_2013_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2014年度_問1", "path": "./pdf/02_calculus/kyoto_2014_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2014年度_問2", "path": "./pdf/02_calculus/kyoto_2014_q2.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2015年度_問1", "path": "./pdf/02_calculus/kyoto_2015_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2015年度_問2", "path": "./pdf/02_calculus/kyoto_2015_q2.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2016年度_問3", "path": "./pdf/02_calculus/kyoto_2016_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2016年度_問4", "path": "./pdf/02_calculus/kyoto_2016_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2017年度_問1", "path": "./pdf/02_calculus/kyoto_2017_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2017年度_問4", "path": "./pdf/02_calculus/kyoto_2017_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2017年度_問5", "path": "./pdf/02_calculus/kyoto_2017_q5.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2018年度_問1", "path": "./pdf/02_calculus/kyoto_2018_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2018年度_問3", "path": "./pdf/02_calculus/kyoto_2018_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2018年度_問4", "path": "./pdf/02_calculus/kyoto_2018_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2019年度_問1", "path": "./pdf/02_calculus/kyoto_2019_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2019年度_問3", "path": "./pdf/02_calculus/kyoto_2019_q3.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2019年度_問4", "path": "./pdf/02_calculus/kyoto_2019_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2019年度_問6", "path": "./pdf/02_calculus/kyoto_2019_q6.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2020年度_問1", "path": "./pdf/02_calculus/kyoto_2020_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2020年度_問4", "path": "./pdf/02_calculus/kyoto_2020_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2020年度_問7", "path": "./pdf/02_calculus/kyoto_2020_q7.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2022年度_問1", "path": "./pdf/02_calculus/kyoto_2022_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2022年度_問4", "path": "./pdf/02_calculus/kyoto_2022_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2023年度_問1", "path": "./pdf/02_calculus/kyoto_2023_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2023年度_問4", "path": "./pdf/02_calculus/kyoto_2023_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2023年度_問5", "path": "./pdf/02_calculus/kyoto_2023_q5.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2024年度_問1", "path": "./pdf/02_calculus/kyoto_2024_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2024年度_問4", "path": "./pdf/02_calculus/kyoto_2024_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2025年度_問1", "path": "./pdf/02_calculus/kyoto_2025_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2025年度_問4", "path": "./pdf/02_calculus/kyoto_2025_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2025年度_問6", "path": "./pdf/02_calculus/kyoto_2025_q6.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2026年度_問1", "path": "./pdf/02_calculus/kyoto_2026_q1.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2026年度_問4", "path": "./pdf/02_calculus/kyoto_2026_q4.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "京大_2026年度_問5", "path": "./pdf/02_calculus/kyoto_2026_q5.pdf", "univ": "京都大学", "field": "微分積分・解析"}, {"title": "名大_2022年度_第1期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2022_t1_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2022年度_第1期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2022_t1_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2022年度_第1期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2022_t1_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2022年度_第2期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2022_t2_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2022年度_第2期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2022_t2_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2022年度_第2期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2022_t2_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2023年度_第1期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2023_t1_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2023年度_第1期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2023_t1_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2023年度_第1期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2023_t1_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2023年度_第2期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2023_t2_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2023年度_第2期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2023_t2_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2023年度_第2期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2023_t2_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2024年度_第1期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2024_t1_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2024年度_第1期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2024_t1_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2024年度_第1期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2024_t1_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2024年度_第2期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2024_t2_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2024年度_第2期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2024_t2_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2024年度_第2期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2024_t2_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2025年度_第1期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2025_t1_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2025年度_第1期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2025_t1_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2025年度_第1期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2025_t1_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2025年度_第2期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2025_t2_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2026年度_第1期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2026_t1_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2026年度_第1期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2026_t1_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2026年度_第1期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2026_t1_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2026年度_第2期_1日目_問3", "path": "./pdf/02_calculus/nagoya_2026_t2_d1_q3.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2026年度_第2期_1日目_問4", "path": "./pdf/02_calculus/nagoya_2026_t2_d1_q4.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}, {"title": "名大_2026年度_第2期_2日目_問2", "path": "./pdf/02_calculus/nagoya_2026_t2_d2_q2.pdf", "univ": "名古屋大学", "field": "微分積分・解析"}]}, "03_複素解析": {"id": "03_複素解析", "name": "複素解析", "summary": "./pdf/03_complex/summary.pdf", "questions": [{"title": "京大_2020年度_問5", "path": "./pdf/03_complex/kyoto_2020_q5.pdf", "univ": "京都大学", "field": "複素解析"}, {"title": "京大_2022年度_問5", "path": "./pdf/03_complex/kyoto_2022_q5.pdf", "univ": "京都大学", "field": "複素解析"}, {"title": "京大_2024年度_問5", "path": "./pdf/03_complex/kyoto_2024_q5.pdf", "univ": "京都大学", "field": "複素解析"}, {"title": "京大_2025年度_問5", "path": "./pdf/03_complex/kyoto_2025_q5.pdf", "univ": "京都大学", "field": "複素解析"}, {"title": "名大_2022年度_第1期_2日目_問3", "path": "./pdf/03_complex/nagoya_2022_t1_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2022年度_第2期_2日目_問3", "path": "./pdf/03_complex/nagoya_2022_t2_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2023年度_第1期_2日目_問3", "path": "./pdf/03_complex/nagoya_2023_t1_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2023年度_第2期_2日目_問3", "path": "./pdf/03_complex/nagoya_2023_t2_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2024年度_第1期_2日目_問3", "path": "./pdf/03_complex/nagoya_2024_t1_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2024年度_第2期_2日目_問3", "path": "./pdf/03_complex/nagoya_2024_t2_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2025年度_第1期_2日目_問3", "path": "./pdf/03_complex/nagoya_2025_t1_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2025年度_第2期_2日目_問3", "path": "./pdf/03_complex/nagoya_2025_t2_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2026年度_第1期_2日目_問3", "path": "./pdf/03_complex/nagoya_2026_t1_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}, {"title": "名大_2026年度_第2期_2日目_問3", "path": "./pdf/03_complex/nagoya_2026_t2_d2_q3.pdf", "univ": "名古屋大学", "field": "複素解析"}]}, "04_位相空間論・幾何": {"id": "04_位相空間論・幾何", "name": "位相空間論・幾何", "summary": "./pdf/04_topology/summary.pdf", "questions": [{"title": "京大_2017年度_問6", "path": "./pdf/04_topology/kyoto_2017_q6.pdf", "univ": "京都大学", "field": "位相空間論・幾何"}, {"title": "京大_2018年度_問8", "path": "./pdf/04_topology/kyoto_2018_q8.pdf", "univ": "京都大学", "field": "位相空間論・幾何"}, {"title": "京大_2020年度_問6", "path": "./pdf/04_topology/kyoto_2020_q6.pdf", "univ": "京都大学", "field": "位相空間論・幾何"}, {"title": "京大_2022年度_問6", "path": "./pdf/04_topology/kyoto_2022_q6.pdf", "univ": "京都大学", "field": "位相空間論・幾何"}, {"title": "京大_2023年度_問6", "path": "./pdf/04_topology/kyoto_2023_q6.pdf", "univ": "京都大学", "field": "位相空間論・幾何"}, {"title": "京大_2024年度_問6", "path": "./pdf/04_topology/kyoto_2024_q6.pdf", "univ": "京都大学", "field": "位相空間論・幾何"}, {"title": "京大_2025年度_問7", "path": "./pdf/04_topology/kyoto_2025_q7.pdf", "univ": "京都大学", "field": "位相空間論・幾何"}, {"title": "京大_2026年度_問6", "path": "./pdf/04_topology/kyoto_2026_q6.pdf", "univ": "京都大学", "field": "位相空間論・幾何"}, {"title": "名大_2022年度_第1期_2日目_問4", "path": "./pdf/04_topology/nagoya_2022_t1_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2022年度_第2期_2日目_問4", "path": "./pdf/04_topology/nagoya_2022_t2_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2023年度_第1期_2日目_問4", "path": "./pdf/04_topology/nagoya_2023_t1_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2023年度_第2期_2日目_問4", "path": "./pdf/04_topology/nagoya_2023_t2_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2024年度_第1期_2日目_問4", "path": "./pdf/04_topology/nagoya_2024_t1_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2024年度_第2期_2日目_問4", "path": "./pdf/04_topology/nagoya_2024_t2_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2025年度_第1期_2日目_問4", "path": "./pdf/04_topology/nagoya_2025_t1_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2025年度_第2期_2日目_問4", "path": "./pdf/04_topology/nagoya_2025_t2_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2026年度_第1期_2日目_問4", "path": "./pdf/04_topology/nagoya_2026_t1_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}, {"title": "名大_2026年度_第2期_2日目_問4", "path": "./pdf/04_topology/nagoya_2026_t2_d2_q4.pdf", "univ": "名古屋大学", "field": "位相空間論・幾何"}]}, "05_代数学": {"id": "05_代数学", "name": "代数学", "summary": "./pdf/05_algebra/summary.pdf", "questions": [{"title": "京大_2018年度_問5", "path": "./pdf/05_algebra/kyoto_2018_q5.pdf", "univ": "京都大学", "field": "代数学"}, {"title": "京大_2022年度_問3", "path": "./pdf/05_algebra/kyoto_2022_q3.pdf", "univ": "京都大学", "field": "代数学"}, {"title": "京大_2026年度_問7", "path": "./pdf/05_algebra/kyoto_2026_q7.pdf", "univ": "京都大学", "field": "代数学"}]}};
+    const fields = Object.keys(fieldData);
+
+    let currentField = fields[0];
+    let currentUnivFilter = 'all';
+    let currentSearchQuery = '';
+    let currentQuestions = [];
+    let currentIndex = 0;
+
+    // Elements
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const menuToggleBtn = document.getElementById('menu-toggle-btn');
+    const closeDrawerBtn = document.getElementById('close-drawer-btn');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const mobilePrevBtn = document.getElementById('mobile-prev-btn');
+    const mobileNextBtn = document.getElementById('mobile-next-btn');
+
+    const fieldTabsEl = document.getElementById('field-tabs');
+    const questionListEl = document.getElementById('question-list');
+    const pdfFrame = document.getElementById('pdf-frame');
+    const currentTitleEl = document.getElementById('current-title');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const openNewTabBtn = document.getElementById('open-new-tab-btn');
+    const fieldSummaryBtn = document.getElementById('field-summary-btn');
+    const searchInput = document.getElementById('search-input');
+    const univFilterBtns = document.querySelectorAll('.filter-btn');
+    const quickPdfSelect = document.getElementById('quick-pdf-select');
+
+    // Drawer Toggle Functions
+    function openDrawer() {
+      sidebar.classList.add('open');
+      sidebarOverlay.classList.add('active');
+    }
+
+    function closeDrawer() {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('active');
+    }
+
+    menuToggleBtn.onclick = openDrawer;
+    mobileMenuBtn.onclick = openDrawer;
+    closeDrawerBtn.onclick = closeDrawer;
+    sidebarOverlay.onclick = closeDrawer;
+
+    // Initialize Field Tabs
+    function initTabs() {
+      fieldTabsEl.innerHTML = '';
+      fields.forEach(fid => {
+        const f = fieldData[fid];
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${fid === currentField ? 'active' : ''}`;
+        btn.innerHTML = `
+          <span>${f.name}</span>
+          <span class="tab-badge">${f.questions.length}</span>
+        `;
+        btn.onclick = () => selectField(fid);
+        fieldTabsEl.appendChild(btn);
+      });
+    }
+
+    function selectField(fid) {
+      currentField = fid;
+      initTabs();
+      applyFilters();
+      if (currentQuestions.length > 0) {
+        loadQuestion(0);
+      } else {
+        loadSummary();
+      }
+    }
+
+    function applyFilters() {
+      const f = fieldData[currentField];
+      currentQuestions = f.questions.filter(q => {
+        const matchesUniv = (currentUnivFilter === 'all') || (q.univ === currentUnivFilter);
+        const matchesSearch = !currentSearchQuery || q.title.toLowerCase().includes(currentSearchQuery.toLowerCase());
+        return matchesUniv && matchesSearch;
+      });
+      renderQuestionList();
+    }
+
+    function renderQuestionList() {
+      questionListEl.innerHTML = '';
+      if (currentQuestions.length === 0) {
+        questionListEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 20px; text-align: center;">該当する問題がありません</div>';
+        return;
+      }
+
+      currentQuestions.forEach((q, idx) => {
+        const item = document.createElement('div');
+        item.className = `question-item ${idx === currentIndex ? 'active' : ''}`;
+        const tagClass = q.univ === '京都大学' ? 'kyoto' : 'nagoya';
+        const tagLabel = q.univ === '京都大学' ? '京大' : '名大';
+        
+        item.innerHTML = `
+          <div class="q-info">
+            <span class="q-univ-tag ${tagClass}">${tagLabel}</span>
+            <span class="q-title" title="${q.title}">${q.title}</span>
+          </div>
+        `;
+        item.onclick = () => {
+          loadQuestion(idx);
+          if (window.innerWidth <= 768) {
+            closeDrawer();
+          }
+        };
+        questionListEl.appendChild(item);
+      });
+    }
+
+    function loadQuestion(index) {
+      if (index < 0 || index >= currentQuestions.length) return;
+      currentIndex = index;
+      const q = currentQuestions[currentIndex];
+
+      pdfFrame.src = q.path;
+      currentTitleEl.textContent = `${q.title}`;
+      openNewTabBtn.href = q.path;
+
+      // Update active list style
+      document.querySelectorAll('.question-item').forEach((el, idx) => {
+        el.classList.toggle('active', idx === currentIndex);
+      });
+
+      // Update nav buttons
+      const isFirst = (currentIndex === 0);
+      const isLast = (currentIndex === currentQuestions.length - 1);
+      prevBtn.disabled = isFirst;
+      nextBtn.disabled = isLast;
+      mobilePrevBtn.disabled = isFirst;
+      mobileNextBtn.disabled = isLast;
+    }
+
+    function loadSummary() {
+      const f = fieldData[currentField];
+      pdfFrame.src = f.summary;
+      currentTitleEl.textContent = `【${f.name}】 一括まとめ (全${f.questions.length}問)`;
+      openNewTabBtn.href = f.summary;
+      document.querySelectorAll('.question-item').forEach(el => el.classList.remove('active'));
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      mobilePrevBtn.disabled = true;
+      mobileNextBtn.disabled = true;
+      if (window.innerWidth <= 768) {
+        closeDrawer();
+      }
+    }
+
+    // Event Listeners
+    fieldSummaryBtn.onclick = () => loadSummary();
+
+    const doPrev = () => {
+      if (currentIndex > 0) loadQuestion(currentIndex - 1);
+    };
+    const doNext = () => {
+      if (currentIndex < currentQuestions.length - 1) loadQuestion(currentIndex + 1);
+    };
+
+    prevBtn.onclick = doPrev;
+    nextBtn.onclick = doNext;
+    mobilePrevBtn.onclick = doPrev;
+    mobileNextBtn.onclick = doNext;
+
+    searchInput.addEventListener('input', (e) => {
+      currentSearchQuery = e.target.value.trim();
+      applyFilters();
+      if (currentQuestions.length > 0) loadQuestion(0);
+    });
+
+    univFilterBtns.forEach(btn => {
+      btn.onclick = () => {
+        univFilterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentUnivFilter = btn.dataset.univ;
+        applyFilters();
+        if (currentQuestions.length > 0) loadQuestion(0);
+      };
+    });
+
+    quickPdfSelect.addEventListener('change', (e) => {
+      const p = e.target.value;
+      if (p) {
+        pdfFrame.src = p;
+        currentTitleEl.textContent = e.target.options[e.target.selectedIndex].text;
+        openNewTabBtn.href = p;
+        document.querySelectorAll('.question-item').forEach(el => el.classList.remove('active'));
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        mobilePrevBtn.disabled = true;
+        mobileNextBtn.disabled = true;
+        e.target.value = '';
+      }
+    });
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key === 'ArrowLeft' || e.key === 'j') {
+        doPrev();
+      } else if (e.key === 'ArrowRight' || e.key === 'k') {
+        doNext();
+      }
+    });
+
+    // Initial load
+    initTabs();
+    selectField(fields[0]);
+  </script>
+</body>
+</html>
